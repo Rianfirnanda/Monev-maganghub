@@ -12,54 +12,16 @@ jobs:
       - name: Checkout Source Code
         uses: actions/checkout@v4
 
-      - name: Prepare Prebuilt or Build APK
+      - name: Prepare Prebuilt APK
         run: |
           mkdir -p output-apk
-          if [ -f ".build-outputs/app-debug.apk" ]; then
-            echo "Found prebuilt signed APK from AI Studio in .build-outputs/app-debug.apk"
+          if [ -f "Monev-MagangHub.apk" ]; then
+            cp Monev-MagangHub.apk output-apk/Monev-MagangHub.apk
+          elif [ -f "APK-SIAP-INSTALL/Monev-MagangHub.apk" ]; then
+            cp APK-SIAP-INSTALL/Monev-MagangHub.apk output-apk/Monev-MagangHub.apk
+          elif [ -f ".build-outputs/app-debug.apk" ]; then
             cp .build-outputs/app-debug.apk output-apk/Monev-MagangHub.apk
           fi
-
-      - name: Set up JDK 21
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'temurin'
-
-      - name: Accept Android SDK Licenses & Install API 36.1
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        run: |
-          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses || true
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager "platforms;android-36.1" "platforms;android-36" "build-tools;36.0.0" || true
-
-      - name: Setup Gradle
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: '9.3.1'
-
-      - name: Restore Debug Keystore from debug.keystore.base64
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        run: |
-          if [ -f debug.keystore.base64 ]; then
-            base64 -d debug.keystore.base64 > debug.keystore
-          elif [ ! -f debug.keystore ]; then
-            keytool -genkey -v -keystore debug.keystore -storepass android -alias androiddebugkey -keypass android -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Android Debug,O=Android,C=US"
-          fi
-
-      - name: Create .env from .env.example if missing
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        run: |
-          if [ ! -f .env ] && [ -f .env.example ]; then
-            cp .env.example .env
-          fi
-
-      - name: Build Debug APK with Gradle
-        if: ${{ !hashFiles('.build-outputs/app-debug.apk') }}
-        run: |
-          gradle assembleDebug --no-daemon -Dorg.gradle.configuration-cache=false
-          cp app/build/outputs/apk/debug/app-debug.apk output-apk/Monev-MagangHub.apk
 
       - name: Upload Monev MagangHub APK Artifact
         uses: actions/upload-artifact@v4

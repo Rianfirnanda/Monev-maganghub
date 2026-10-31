@@ -450,9 +450,9 @@ fun AttendanceDriveScreen(
                                         .testTag("brief_explanation_input")
                                 )
 
-                                Row(
+                                Column(
                                     modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     Button(
                                         onClick = {
@@ -469,7 +469,7 @@ fun AttendanceDriveScreen(
                                         },
                                         enabled = !isGeneratingAiDraft && (briefExplanation.isNotBlank() || activitySummary.isNotBlank()),
                                         modifier = Modifier
-                                            .weight(1f)
+                                            .fillMaxWidth()
                                             .testTag("ai_autogenerate_column_button")
                                     ) {
                                         Icon(
@@ -478,7 +478,7 @@ fun AttendanceDriveScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("AI Auto-Generate Kolom")
+                                        Text("AI Auto-Generate Isi Kolom Absen")
                                     }
 
                                     FilledTonalButton(
@@ -493,7 +493,7 @@ fun AttendanceDriveScreen(
                                         },
                                         enabled = !isGeneratingAiDraft && (activitySummary.isNotBlank() || briefExplanation.isNotBlank()),
                                         modifier = Modifier
-                                            .weight(1f)
+                                            .fillMaxWidth()
                                             .testTag("ai_polish_sentence_button")
                                     ) {
                                         Icon(
@@ -502,7 +502,7 @@ fun AttendanceDriveScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Perbaiki Kalimat")
+                                        Text("Perbaiki Kalimat Kolom Absen")
                                     }
                                 }
 

@@ -145,3 +145,23 @@ dependencies {
   // "ksp"(libs.androidx.room.compiler)
   // "ksp"(libs.moshi.kotlin.codegen)
 }
+
+val exportReadyApk = tasks.register("exportReadyApk") {
+  val rootDirFile = rootProject.projectDir
+  val builtApkFile = layout.buildDirectory.file("outputs/apk/debug/app-debug.apk")
+  doLast {
+    val src = builtApkFile.get().asFile
+    if (src.exists()) {
+      val rootTarget = rootDirFile.resolve("Monev-MagangHub.apk")
+      src.copyTo(rootTarget, overwrite = true)
+      val folderTargetDir = rootDirFile.resolve("APK-SIAP-INSTALL")
+      folderTargetDir.mkdirs()
+      src.copyTo(folderTargetDir.resolve("Monev-MagangHub.apk"), overwrite = true)
+    }
+  }
+}
+
+tasks.matching { it.name == "assembleDebug" || it.name == "packageDebug" }.configureEach {
+  finalizedBy(exportReadyApk)
+}
+

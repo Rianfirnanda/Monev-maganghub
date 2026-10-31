@@ -93,6 +93,8 @@ import com.example.viewmodel.ColumnHelperState
 import com.example.viewmodel.StructuredAttendanceDraft
 import org.json.JSONObject
 
+import android.view.ViewGroup
+
 private const val DEFAULT_DASHBOARD_URL = "https://monev.maganghub.kemnaker.go.id/dashboard"
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -142,16 +144,16 @@ fun PortalWebViewScreen(
     }
 
     Column(modifier = Modifier.fillMaxSize()) {
-        // Top Status & Quick Action Bar
+        // Compact Top Status & Navigation Header
         Surface(
-            tonalElevation = 3.dp,
+            tonalElevation = 2.dp,
             color = MaterialTheme.colorScheme.surface,
             modifier = Modifier.fillMaxWidth()
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .padding(horizontal = 10.dp, vertical = 6.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -160,11 +162,13 @@ fun PortalWebViewScreen(
                 ) {
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.weight(1f)
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 4.dp)
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(10.dp)
+                                .size(9.dp)
                                 .clip(CircleShape)
                                 .background(if (todayCheckedOut) EmeraldSuccess else AmberGold)
                         )
@@ -172,31 +176,74 @@ fun PortalWebViewScreen(
                         Column {
                             Text(
                                 text = pageTitle.ifBlank { "Monev MagangHub Kemnaker" },
-                                style = MaterialTheme.typography.titleMedium,
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.Bold,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis
                             )
                             Text(
                                 text = if (todayCheckedOut) {
-                                    "Status Hari Ini: Sudah Isi Absen Pulang"
+                                    "Sudah Isi Absen Pulang"
                                 } else {
-                                    "Status Hari Ini: Belum Absen Pulang (Pengingat Aktif)"
+                                    "Belum Absen Pulang • Pengingat Aktif"
                                 },
-                                style = MaterialTheme.typography.labelMedium,
-                                color = if (todayCheckedOut) EmeraldSuccess else AmberGold
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (todayCheckedOut) EmeraldSuccess else AmberGold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
                             )
                         }
                     }
 
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         IconButton(
+                            onClick = { webViewRef?.goBack() },
+                            enabled = canGoBack,
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("webview_back_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                                contentDescription = "Kembali",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { webViewRef?.reload() },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("webview_reload_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Refresh,
+                                contentDescription = "Muat Ulang",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
+                            onClick = { webViewRef?.loadUrl(DEFAULT_DASHBOARD_URL) },
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("webview_home_button")
+                        ) {
+                            Icon(
+                                imageVector = Icons.Filled.Home,
+                                contentDescription = "Dashboard Utama",
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                        IconButton(
                             onClick = { showCredentialsDialog = true },
-                            modifier = Modifier.testTag("auto_login_settings_button")
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("auto_login_settings_button")
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Key,
                                 contentDescription = "Pengaturan Login Otomatis",
-                                tint = if (savedUsername.isNotBlank()) EmeraldSuccess else MaterialTheme.colorScheme.primary
+                                tint = if (savedUsername.isNotBlank()) EmeraldSuccess else MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                         IconButton(
@@ -207,32 +254,22 @@ fun PortalWebViewScreen(
                                     wv.reload()
                                 }
                             },
-                            modifier = Modifier.testTag("toggle_desktop_mode_button")
+                            modifier = Modifier
+                                .size(38.dp)
+                                .testTag("toggle_desktop_mode_button")
                         ) {
                             Icon(
                                 imageVector = if (isDesktopMode) Icons.Filled.DesktopWindows else Icons.Filled.PhoneAndroid,
-                                contentDescription = "Ubah Mode Tampilan Desktop/Mobile"
-                            )
-                        }
-                        IconButton(
-                            onClick = {
-                                runCatching {
-                                    context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl)))
-                                }
-                            },
-                            modifier = Modifier.testTag("open_external_browser_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Filled.OpenInBrowser,
-                                contentDescription = "Buka di Browser Eksternal"
+                                contentDescription = "Ubah Mode Tampilan Desktop/Mobile",
+                                modifier = Modifier.size(20.dp)
                             )
                         }
                     }
                 }
 
-                Spacer(modifier = Modifier.height(6.dp))
+                Spacer(modifier = Modifier.height(4.dp))
 
-                // Quick action chips for AI Column Filler, Attendance & Google Drive Upload
+                // Single Horizontal Scrollable Quick Action Strip (Never wraps vertically)
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -246,7 +283,8 @@ fun PortalWebViewScreen(
                             Text(
                                 text = "AI Isi & Perbaiki Kolom Absen",
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = FontWeight.Bold
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 1
                             )
                         },
                         leadingIcon = {
@@ -268,7 +306,8 @@ fun PortalWebViewScreen(
                         label = {
                             Text(
                                 text = if (todayCheckedOut) "Sudah Absen Pulang" else "Tandai Sudah Absen",
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
                             )
                         },
                         leadingIcon = {
@@ -294,7 +333,8 @@ fun PortalWebViewScreen(
                         label = {
                             Text(
                                 text = "Upload Foto ke Drive",
-                                style = MaterialTheme.typography.labelMedium
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
                             )
                         },
                         leadingIcon = {
@@ -306,6 +346,57 @@ fun PortalWebViewScreen(
                             )
                         },
                         modifier = Modifier.testTag("quick_upload_drive_chip")
+                    )
+
+                    AssistChip(
+                        onClick = {
+                            val wv = webViewRef
+                            if (wv != null && savedUsername.isNotBlank() && savedPassword.isNotBlank()) {
+                                injectAutoLoginScript(wv, savedUsername, savedPassword, forceSubmit = false)
+                            } else {
+                                showCredentialsDialog = true
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = if (savedUsername.isNotBlank()) "Isi Auto-Login" else "Simpan Login",
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.Key,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.testTag("fill_login_button")
+                    )
+
+                    AssistChip(
+                        onClick = {
+                            runCatching {
+                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(currentUrl)))
+                            }
+                        },
+                        label = {
+                            Text(
+                                text = "Buka di Browser",
+                                style = MaterialTheme.typography.labelMedium,
+                                maxLines = 1
+                            )
+                        },
+                        leadingIcon = {
+                            Icon(
+                                imageVector = Icons.Filled.OpenInBrowser,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        },
+                        modifier = Modifier.testTag("open_external_browser_button")
                     )
                 }
             }
@@ -320,7 +411,7 @@ fun PortalWebViewScreen(
             )
         }
 
-        // Main Responsive WebView
+        // Full-Height Responsive WebView (occupies all remaining space down to NavigationBar)
         Box(
             modifier = Modifier
                 .weight(1f)
@@ -332,6 +423,10 @@ fun PortalWebViewScreen(
                     .testTag("monev_portal_webview"),
                 factory = { ctx ->
                     WebView(ctx).apply {
+                        layoutParams = ViewGroup.LayoutParams(
+                            ViewGroup.LayoutParams.MATCH_PARENT,
+                            ViewGroup.LayoutParams.MATCH_PARENT
+                        )
                         val cookieManager = CookieManager.getInstance()
                         cookieManager.setAcceptCookie(true)
                         cookieManager.setAcceptThirdPartyCookies(this, true)
@@ -340,8 +435,9 @@ fun PortalWebViewScreen(
                             javaScriptEnabled = true
                             domStorageEnabled = true
                             loadsImagesAutomatically = true
-                            useWideViewPort = true
-                            loadWithOverviewMode = true
+                            useWideViewPort = isDesktopMode
+                            loadWithOverviewMode = isDesktopMode
+                            textZoom = 100
                             setSupportZoom(true)
                             builtInZoomControls = true
                             displayZoomControls = false
@@ -426,105 +522,6 @@ fun PortalWebViewScreen(
                     canGoForward = wv.canGoForward()
                 }
             )
-        }
-
-        // Bottom WebView Navigation Toolbar
-        Surface(
-            tonalElevation = 4.dp,
-            color = MaterialTheme.colorScheme.surface,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 4.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(
-                        onClick = { webViewRef?.goBack() },
-                        enabled = canGoBack,
-                        modifier = Modifier.testTag("webview_back_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Kembali"
-                        )
-                    }
-                    IconButton(
-                        onClick = { webViewRef?.goForward() },
-                        enabled = canGoForward,
-                        modifier = Modifier.testTag("webview_forward_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "Maju"
-                        )
-                    }
-                    IconButton(
-                        onClick = { webViewRef?.reload() },
-                        modifier = Modifier.testTag("webview_reload_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Refresh,
-                            contentDescription = "Muat Ulang"
-                        )
-                    }
-                    IconButton(
-                        onClick = { webViewRef?.loadUrl(DEFAULT_DASHBOARD_URL) },
-                        modifier = Modifier.testTag("webview_home_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Home,
-                            contentDescription = "Dashboard Utama"
-                        )
-                    }
-                }
-
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilledTonalButton(
-                        onClick = { showAiColumnDialog = true },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("toolbar_ai_fill_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.AutoFixHigh,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = "AI Kolom Absen",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-
-                    FilledTonalButton(
-                        onClick = {
-                            val wv = webViewRef
-                            if (wv != null && savedUsername.isNotBlank() && savedPassword.isNotBlank()) {
-                                injectAutoLoginScript(wv, savedUsername, savedPassword, forceSubmit = false)
-                            } else {
-                                showCredentialsDialog = true
-                            }
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        modifier = Modifier.testTag("fill_login_button")
-                    ) {
-                        Icon(
-                            imageVector = Icons.Filled.Key,
-                            contentDescription = null,
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (savedUsername.isNotBlank()) "Auto Login" else "Simpan Login",
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                    }
-                }
-            }
         }
     }
 
@@ -968,10 +965,12 @@ private fun applyDesktopMode(settings: WebSettings, desktop: Boolean) {
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
         settings.useWideViewPort = true
         settings.loadWithOverviewMode = true
+        settings.textZoom = 100
     } else {
         settings.userAgentString = null
-        settings.useWideViewPort = true
-        settings.loadWithOverviewMode = true
+        settings.useWideViewPort = false
+        settings.loadWithOverviewMode = false
+        settings.textZoom = 100
     }
 }
 
