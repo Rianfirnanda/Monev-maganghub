@@ -1,0 +1,12 @@
+<resources>
+    <string name="app_name">Monev MagangHub</string>
+    <string name="portal_url">https://monev.maganghub.kemnaker.go.id/dashboard</string>
+    <string name="nav_portal">Portal Monev</string>
+    <string name="nav_absensi">Absensi &amp; Drive</string>
+    <string name="nav_pengingat">Pengingat</string>
+    <string name="nav_asisten">Asisten AI</string>
+    <string name="sign_in_google">Sign in with Google</string>
+    <string name="auth_subtitle">Masuk dengan akun Google Anda untuk menyimpan status absensi harian, pengingat jam pulang otomatis (Senin–Kamis 16:00 WIB &amp; Jumat 16:30 WIB), serta koneksi dokumentasi foto ke Google Drive.</string>
+    <string name="notification_channel_name">Pengingat Absensi MagangHub</string>
+    <string name="notification_channel_desc">Notifikasi pengingat absensi pulang Senin-Kamis 16.00 WIB dan Jumat 16.30 WIB</string>
+</resources>

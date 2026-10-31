@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Briefcase / Portal Badge Silhouette centered in 66dp safe zone -->
+    <path
+        android:fillColor="#38BDF8"
+        android:pathData="M44,30h20c2.2,0 4,1.8 4,4v6h8c3.3,0 6,2.7 6,6v26c0,3.3 -2.7,6 -6,6H32c-3.3,0 -6,-2.7 -6,-6V46c0,-3.3 2.7,-6 6,-6h8v-6C40,31.8 41.8,30 44,30zM44,40h20v-6H44V40z" />
+    <!-- White Checkmark inside briefcase representing attendance check-out -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M49.5,64.2L41.8,56.5l3.5,-3.5l4.2,4.2l13.2,-13.2l3.5,3.5L49.5,64.2z" />
+</vector>

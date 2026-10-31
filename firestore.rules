@@ -1,0 +1,119 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // 1. Global Safety Net: Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Hardened Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    // 3. Entity Validation Blueprints
+    function isValidAttendanceLog(data) {
+      return data.keys().hasAll(['userId', 'dateKey', 'checkedOut', 'activitySummary', 'createdAt', 'updatedAt']) &&
+             data.keys().hasOnly([
+               'userId', 'dateKey', 'checkedOut', 'checkInTime', 'checkOutTime',
+               'activitySummary', 'driveFileId', 'driveWebViewLink', 'driveFileName',
+               'localPhotoUri', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.dateKey is string && data.dateKey.size() == 10 && data.dateKey.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$') &&
+             data.checkedOut is bool &&
+             data.activitySummary is string && data.activitySummary.size() <= 2000 &&
+             (!('checkInTime' in data) || (data.checkInTime is string && data.checkInTime.size() <= 50)) &&
+             (!('checkOutTime' in data) || (data.checkOutTime is string && data.checkOutTime.size() <= 50)) &&
+             (!('driveFileId' in data) || (data.driveFileId is string && data.driveFileId.size() <= 200)) &&
+             (!('driveWebViewLink' in data) || (data.driveWebViewLink is string && data.driveWebViewLink.size() <= 500)) &&
+             (!('driveFileName' in data) || (data.driveFileName is string && data.driveFileName.size() <= 200)) &&
+             (!('localPhotoUri' in data) || (data.localPhotoUri is string && data.localPhotoUri.size() <= 500)) &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    function isValidUserSettings(data) {
+      return data.keys().hasAll([
+               'userId', 'monThuHour', 'monThuMinute', 'friHour', 'friMinute',
+               'reminderEnabled', 'autoLoginEnabled', 'driveFolderName', 'createdAt', 'updatedAt'
+             ]) &&
+             data.keys().hasOnly([
+               'userId', 'monThuHour', 'monThuMinute', 'friHour', 'friMinute',
+               'reminderEnabled', 'autoLoginEnabled', 'driveFolderName', 'createdAt', 'updatedAt'
+             ]) &&
+             data.userId is string && data.userId.size() >= 1 && data.userId.size() <= 128 &&
+             data.userId == request.auth.uid &&
+             data.monThuHour is int && data.monThuHour >= 0 && data.monThuHour <= 23 &&
+             data.monThuMinute is int && data.monThuMinute >= 0 && data.monThuMinute <= 59 &&
+             data.friHour is int && data.friHour >= 0 && data.friHour <= 23 &&
+             data.friMinute is int && data.friMinute >= 0 && data.friMinute <= 59 &&
+             data.reminderEnabled is bool &&
+             data.autoLoginEnabled is bool &&
+             data.driveFolderName is string && data.driveFolderName.size() >= 1 && data.driveFolderName.size() <= 100 &&
+             data.createdAt is timestamp && data.createdAt <= request.time &&
+             data.updatedAt is timestamp && data.updatedAt <= request.time;
+    }
+
+    // 4. Collection Rules: /attendance_logs/{logId}
+    match /attendance_logs/{logId} {
+      allow get: if isSignedIn() && isValidId(logId) && resource != null && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(logId) &&
+                       isValidAttendanceLog(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(logId) &&
+                       isValidAttendanceLog(incoming()) &&
+                       existing().userId == request.auth.uid &&
+                       incoming().userId == existing().userId &&
+                       incoming().dateKey == existing().dateKey &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'checkedOut', 'checkInTime', 'checkOutTime', 'activitySummary',
+                         'driveFileId', 'driveWebViewLink', 'driveFileName', 'localPhotoUri', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(logId) && existing().userId == request.auth.uid;
+    }
+
+    // 5. Collection Rules: /user_settings/{userId}
+    match /user_settings/{userId} {
+      allow get: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+
+      allow create: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserSettings(incoming());
+
+      allow update: if isSignedIn() &&
+                       isValidId(userId) &&
+                       request.auth.uid == userId &&
+                       isValidUserSettings(incoming()) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().diff(existing()).affectedKeys().hasOnly([
+                         'monThuHour', 'monThuMinute', 'friHour', 'friMinute',
+                         'reminderEnabled', 'autoLoginEnabled', 'driveFolderName', 'updatedAt'
+                       ]);
+
+      allow delete: if isSignedIn() && isValidId(userId) && request.auth.uid == userId;
+    }
+  }
+}

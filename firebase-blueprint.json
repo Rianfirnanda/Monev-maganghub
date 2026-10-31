@@ -1,0 +1,144 @@
+{
+  "entities": {
+    "AttendanceLog": {
+      "title": "AttendanceLog",
+      "description": "Rekap status absensi harian magang Kemnaker dan dokumentasi foto Google Drive.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID pengguna Firebase Auth pemilik log absensi."
+        },
+        "dateKey": {
+          "type": "string",
+          "description": "Tanggal absensi dalam format YYYY-MM-DD (WIB)."
+        },
+        "checkedOut": {
+          "type": "boolean",
+          "description": "Status apakah absen jam pulang sudah diisi pada hari tersebut."
+        },
+        "checkInTime": {
+          "type": "string",
+          "description": "Waktu pencatatan absen masuk (opsional)."
+        },
+        "checkOutTime": {
+          "type": "string",
+          "description": "Waktu pencatatan absen pulang (opsional)."
+        },
+        "activitySummary": {
+          "type": "string",
+          "description": "Catatan kegiatan harian atau laporan monev magang."
+        },
+        "driveFileId": {
+          "type": "string",
+          "description": "ID file foto dokumentasi yang diunggah ke Google Drive."
+        },
+        "driveWebViewLink": {
+          "type": "string",
+          "description": "Tautan web untuk membuka foto dokumentasi di Google Drive."
+        },
+        "driveFileName": {
+          "type": "string",
+          "description": "Nama file foto dokumentasi yang tersimpan di Google Drive."
+        },
+        "localPhotoUri": {
+          "type": "string",
+          "description": "URI lokal foto dokumentasi di perangkat."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp pembuatan dokumen via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp pembaruan dokumen via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "dateKey",
+        "checkedOut",
+        "activitySummary",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "UserSettings": {
+      "title": "UserSettings",
+      "description": "Pengaturan jadwal pengingat absensi harian (Senin-Kamis & Jumat) serta preferensi Google Drive pengguna.",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "UID pengguna Firebase Auth."
+        },
+        "monThuHour": {
+          "type": "integer",
+          "description": "Jam pengingat pulang Senin-Kamis (default 16)."
+        },
+        "monThuMinute": {
+          "type": "integer",
+          "description": "Menit pengingat pulang Senin-Kamis (default 0)."
+        },
+        "friHour": {
+          "type": "integer",
+          "description": "Jam pengingat pulang Jumat (default 16)."
+        },
+        "friMinute": {
+          "type": "integer",
+          "description": "Menit pengingat pulang Jumat (default 30)."
+        },
+        "reminderEnabled": {
+          "type": "boolean",
+          "description": "Status aktif/tidaknya notifikasi pengingat absensi harian."
+        },
+        "autoLoginEnabled": {
+          "type": "boolean",
+          "description": "Status penyimpanan sesi & kredensial login otomatis WebView."
+        },
+        "driveFolderName": {
+          "type": "string",
+          "description": "Nama folder tujuan di Google Drive untuk dokumentasi harian."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp pembuatan dokumen via FieldValue.serverTimestamp()."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp pembaruan dokumen via FieldValue.serverTimestamp()."
+        }
+      },
+      "required": [
+        "userId",
+        "monThuHour",
+        "monThuMinute",
+        "friHour",
+        "friMinute",
+        "reminderEnabled",
+        "autoLoginEnabled",
+        "driveFolderName",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/attendance_logs/{logId}": {
+      "schema": {
+        "$ref": "#/entities/AttendanceLog"
+      },
+      "description": "Koleksi log absensi harian dan dokumentasi foto Google Drive per pengguna."
+    },
+    "/user_settings/{userId}": {
+      "schema": {
+        "$ref": "#/entities/UserSettings"
+      },
+      "description": "Pengaturan pengingat jam pulang dan integrasi Drive per pengguna."
+    }
+  }
+}

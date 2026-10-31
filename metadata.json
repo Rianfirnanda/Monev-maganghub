@@ -1,0 +1,6 @@
+{
+  "name": "Monev MagangHub",
+  "description": "Aplikasi portal Monev MagangHub Kemnaker dengan login tersimpan, pengingat absensi jam pulang otomatis, upload dokumentasi harian ke Google Drive, dan asisten pintar AI.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
