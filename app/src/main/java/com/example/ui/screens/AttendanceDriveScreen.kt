@@ -11,6 +11,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
@@ -74,13 +75,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
 import com.example.data.drive.GoogleDriveService
 import com.example.data.model.AttendanceLog
 import com.example.ui.theme.AmberGold
 import com.example.ui.theme.EmeraldSuccess
 import com.example.viewmodel.DataUiState
 import com.example.viewmodel.StructuredAttendanceDraft
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 
 @Composable
 fun AttendanceDriveScreen(
@@ -107,6 +110,64 @@ fun AttendanceDriveScreen(
     var generatedOutputBadge by rememberSaveable { mutableStateOf("") }
     var markCheckedOutOnSave by rememberSaveable { mutableStateOf(true) }
     var showDriveOAuthDialog by rememberSaveable { mutableStateOf(false) }
+    var isAuthorizingDrive by remember { mutableStateOf(false) }
+    var driveAuthErrorMessage by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val driveAuthIntentLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartIntentSenderForResult()
+    ) { activityResult ->
+        isAuthorizingDrive = false
+        runCatching {
+            val authResult = Identity.getAuthorizationClient(context)
+                .getAuthorizationResultFromIntent(activityResult.data)
+            val accessToken = authResult.accessToken
+            if (!accessToken.isNullOrBlank()) {
+                driveAuthErrorMessage = null
+                onConnectDriveToken(accessToken, 3600L)
+            } else {
+                driveAuthErrorMessage = "Izin Google Drive tidak diberikan. Silakan ketuk Hubungkan Google Drive lalu pilih Izinkan."
+            }
+        }.onFailure { e ->
+            driveAuthErrorMessage = e.localizedMessage ?: "Otorisasi Google Drive dibatalkan."
+        }
+    }
+
+    val requestNativeDriveAuth: () -> Unit = {
+        isAuthorizingDrive = true
+        driveAuthErrorMessage = null
+        val authRequest = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope(GoogleDriveService.DRIVE_FILE_SCOPE)))
+            .build()
+
+        Identity.getAuthorizationClient(context)
+            .authorize(authRequest)
+            .addOnSuccessListener { authResult ->
+                if (authResult.hasResolution()) {
+                    val pendingIntent = authResult.pendingIntent
+                    if (pendingIntent != null) {
+                        driveAuthIntentLauncher.launch(
+                            IntentSenderRequest.Builder(pendingIntent.intentSender).build()
+                        )
+                    } else {
+                        isAuthorizingDrive = false
+                        showDriveOAuthDialog = true
+                    }
+                } else {
+                    isAuthorizingDrive = false
+                    val token = authResult.accessToken
+                    if (!token.isNullOrBlank()) {
+                        onConnectDriveToken(token, 3600L)
+                    } else {
+                        showDriveOAuthDialog = true
+                    }
+                }
+            }
+            .addOnFailureListener { e ->
+                isAuthorizingDrive = false
+                driveAuthErrorMessage = e.localizedMessage ?: "Gagal membuka otorisasi Google Drive."
+                showDriveOAuthDialog = true
+            }
+    }
 
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -293,23 +354,45 @@ fun AttendanceDriveScreen(
                             }
                         }
 
+                        if (!driveAuthErrorMessage.isNullOrBlank()) {
+                            Text(
+                                text = driveAuthErrorMessage!!,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             FilledTonalButton(
-                                onClick = { showDriveOAuthDialog = true },
+                                onClick = { requestNativeDriveAuth() },
+                                enabled = !isAuthorizingDrive,
                                 modifier = Modifier
                                     .weight(1f)
                                     .testTag("connect_google_drive_button")
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.Link,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(18.dp)
-                                )
+                                if (isAuthorizingDrive) {
+                                    CircularProgressIndicator(
+                                        modifier = Modifier.size(16.dp),
+                                        strokeWidth = 2.dp
+                                    )
+                                } else {
+                                    Icon(
+                                        imageVector = Icons.Filled.Link,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text(if (driveConnected) "Perbarui Otorisasi Drive" else "Hubungkan Google Drive")
+                                Text(
+                                    text = when {
+                                        isAuthorizingDrive -> "Menghubungkan Drive..."
+                                        driveConnected -> "Perbarui Otorisasi Drive"
+                                        else -> "Hubungkan Google Drive"
+                                    }
+                                )
                             }
 
                             if (driveConnected) {
@@ -459,9 +542,13 @@ fun AttendanceDriveScreen(
                                             val sourceText = briefExplanation.ifBlank { activitySummary }
                                             onAutoGenerateFromExplanation(sourceText) { draft ->
                                                 activitySummary = buildString {
-                                                    append(draft.uraianKegiatan.ifBlank { draft.kalimatLengkapKolom })
-                                                    if (draft.outputCapaian.isNotBlank()) {
-                                                        append("\n\nOutput/Capaian: ${draft.outputCapaian}")
+                                                    append("Uraian Aktivitas:\n")
+                                                    append(draft.uraianAktivitas.ifBlank { draft.kalimatLengkapKolom })
+                                                    if (draft.pembelajaranDiperoleh.isNotBlank()) {
+                                                        append("\n\nPembelajaran yang Diperoleh:\n${draft.pembelajaranDiperoleh}")
+                                                    }
+                                                    if (draft.kendalaDialami.isNotBlank()) {
+                                                        append("\n\nKendala yang Dialami:\n${draft.kendalaDialami}")
                                                     }
                                                 }.take(1900)
                                                 generatedOutputBadge = draft.judulKegiatan
@@ -478,16 +565,23 @@ fun AttendanceDriveScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("AI Auto-Generate Isi Kolom Absen")
+                                        Text("AI Auto-Generate 3 Kolom Absen")
                                     }
 
                                     FilledTonalButton(
                                         onClick = {
                                             val targetToPolish = activitySummary.ifBlank { briefExplanation }
                                             onPolishExistingSentence(targetToPolish) { draft ->
-                                                activitySummary = draft.uraianKegiatan
-                                                    .ifBlank { draft.kalimatLengkapKolom }
-                                                    .take(1900)
+                                                activitySummary = buildString {
+                                                    append("Uraian Aktivitas:\n")
+                                                    append(draft.uraianAktivitas.ifBlank { draft.kalimatLengkapKolom })
+                                                    if (draft.pembelajaranDiperoleh.isNotBlank()) {
+                                                        append("\n\nPembelajaran yang Diperoleh:\n${draft.pembelajaranDiperoleh}")
+                                                    }
+                                                    if (draft.kendalaDialami.isNotBlank()) {
+                                                        append("\n\nKendala yang Dialami:\n${draft.kendalaDialami}")
+                                                    }
+                                                }.take(1900)
                                                 generatedOutputBadge = draft.judulKegiatan
                                             }
                                         },
@@ -502,7 +596,7 @@ fun AttendanceDriveScreen(
                                             modifier = Modifier.size(16.dp)
                                         )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Perbaiki Kalimat Kolom Absen")
+                                        Text("Perbaiki Kalimat & Isi 3 Kolom")
                                     }
                                 }
 
@@ -719,6 +813,11 @@ fun AttendanceDriveScreen(
     if (showDriveOAuthDialog) {
         GoogleDriveOAuthDialog(
             userEmail = userEmail,
+            errorMessage = driveAuthErrorMessage,
+            onRetryNativeAuth = {
+                showDriveOAuthDialog = false
+                requestNativeDriveAuth()
+            },
             onDismiss = { showDriveOAuthDialog = false },
             onTokenReceived = { token, expiresIn ->
                 onConnectDriveToken(token, expiresIn)
@@ -807,22 +906,16 @@ private fun AttendanceLogCard(
     }
 }
 
-@SuppressLint("SetJavaScriptEnabled")
 @Composable
 private fun GoogleDriveOAuthDialog(
     userEmail: String?,
+    errorMessage: String?,
+    onRetryNativeAuth: () -> Unit,
     onDismiss: () -> Unit,
     onTokenReceived: (String, Long) -> Unit
 ) {
-    val context = LocalContext.current
     var manualToken by rememberSaveable { mutableStateOf("") }
-    var showEmbeddedOAuth by rememberSaveable { mutableStateOf(true) }
-    val clientId = remember {
-        runCatching { context.getString(com.example.R.string.default_web_client_id) }.getOrDefault("")
-    }
-    val oauthUrl = remember(clientId, userEmail) {
-        GoogleDriveService.buildDriveOAuthUrl(clientId, userEmail)
-    }
+    var showManualInput by rememberSaveable { mutableStateOf(false) }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -835,88 +928,51 @@ private fun GoogleDriveOAuthDialog(
         text = {
             Column(
                 modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "Setujui akses Google Drive agar aplikasi dapat membuat folder dan mengunggah foto dokumentasi harian Anda secara otomatis.",
+                    text = "Gunakan otorisasi resmi Google Play Services Android untuk akun ${userEmail ?: "Google Anda"} agar aplikasi dapat membuat folder Tanggal, Bulan & Tahun serta mengunggah foto dokumentasi secara otomatis.",
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                if (showEmbeddedOAuth) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(320.dp)
-                            .clip(RoundedCornerShape(12.dp))
+                if (!errorMessage.isNullOrBlank()) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.errorContainer,
+                        shape = RoundedCornerShape(12.dp),
+                        modifier = Modifier.fillMaxWidth()
                     ) {
-                        AndroidView(
-                            modifier = Modifier.fillMaxSize(),
-                            factory = { ctx ->
-                                WebView(ctx).apply {
-                                    settings.javaScriptEnabled = true
-                                    settings.domStorageEnabled = true
-                                    // Clean User-Agent so Google OAuth page renders cleanly
-                                    settings.userAgentString =
-                                        "Mozilla/5.0 (Linux; Android 14; Pixel 8) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Mobile Safari/537.36"
-
-                                    webViewClient = object : WebViewClient() {
-                                        override fun shouldOverrideUrlLoading(
-                                            view: WebView?,
-                                            request: WebResourceRequest?
-                                        ): Boolean {
-                                            val urlStr = request?.url?.toString().orEmpty()
-                                            if (urlStr.contains("access_token=")) {
-                                                val token = extractAccessTokenFromUrl(urlStr)
-                                                val expires = extractExpiresInFromUrl(urlStr)
-                                                if (!token.isNullOrBlank()) {
-                                                    onTokenReceived(token, expires)
-                                                    return true
-                                                }
-                                            }
-                                            return false
-                                        }
-
-                                        override fun onPageFinished(view: WebView?, url: String?) {
-                                            super.onPageFinished(view, url)
-                                            val urlStr = url.orEmpty()
-                                            if (urlStr.contains("access_token=")) {
-                                                val token = extractAccessTokenFromUrl(urlStr)
-                                                val expires = extractExpiresInFromUrl(urlStr)
-                                                if (!token.isNullOrBlank()) {
-                                                    onTokenReceived(token, expires)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    loadUrl(oauthUrl)
-                                }
-                            }
+                        Text(
+                            text = errorMessage,
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.padding(12.dp)
                         )
                     }
                 }
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
+                Button(
+                    onClick = onRetryNativeAuth,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .testTag("retry_native_drive_auth_button")
                 ) {
-                    TextButton(
-                        onClick = {
-                            runCatching {
-                                context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(oauthUrl)))
-                            }
-                        }
-                    ) {
-                        Text("Buka OAuth di Browser")
-                    }
-                    TextButton(
-                        onClick = { showEmbeddedOAuth = !showEmbeddedOAuth }
-                    ) {
-                        Text(if (showEmbeddedOAuth) "Input Token Manual" else "Tampilkan Layar Login")
-                    }
+                    Icon(
+                        imageVector = Icons.Filled.CloudDone,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Izinkan Akses Google Drive (Native Android)")
                 }
 
-                if (!showEmbeddedOAuth) {
+                TextButton(
+                    onClick = { showManualInput = !showManualInput },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (showManualInput) "Sembunyikan Input Token Manual" else "Atau Masukkan Access Token Manual")
+                }
+
+                if (showManualInput) {
                     OutlinedTextField(
                         value = manualToken,
                         onValueChange = { manualToken = it },
@@ -930,14 +986,11 @@ private fun GoogleDriveOAuthDialog(
             }
         },
         confirmButton = {
-            if (!showEmbeddedOAuth) {
+            if (showManualInput && manualToken.isNotBlank()) {
                 Button(
                     onClick = {
-                        if (manualToken.isNotBlank()) {
-                            onTokenReceived(manualToken.trim(), 3600L)
-                        }
-                    },
-                    enabled = manualToken.isNotBlank()
+                        onTokenReceived(manualToken.trim(), 3600L)
+                    }
                 ) {
                     Text("Simpan Token")
                 }
@@ -949,22 +1002,4 @@ private fun GoogleDriveOAuthDialog(
             }
         }
     )
-}
-
-private fun extractAccessTokenFromUrl(url: String): String? {
-    val fragment = url.substringAfter("#", "")
-    val query = url.substringAfter("?", "")
-    val combined = "$fragment&$query"
-    return combined.split("&")
-        .firstOrNull { it.startsWith("access_token=") }
-        ?.substringAfter("access_token=")
-        ?.takeIf { it.isNotBlank() }
-}
-
-private fun extractExpiresInFromUrl(url: String): Long {
-    val fragment = url.substringAfter("#", "")
-    return fragment.split("&")
-        .firstOrNull { it.startsWith("expires_in=") }
-        ?.substringAfter("expires_in=")
-        ?.toLongOrNull() ?: 3600L
 }

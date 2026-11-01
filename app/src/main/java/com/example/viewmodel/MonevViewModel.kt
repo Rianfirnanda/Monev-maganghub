@@ -11,6 +11,9 @@ import com.example.data.model.UserSettings
 import com.example.data.preferences.LocalPrefsManager
 import com.example.data.repository.MonevRepository
 import com.example.notification.AttendanceNotificationHelper
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -20,6 +23,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 sealed interface DataUiState<out T> {
     data object Loading : DataUiState<Nothing>
@@ -136,6 +140,33 @@ class MonevViewModel(
     init {
         AttendanceNotificationHelper.ensureNotificationChannel(appContext)
         AttendanceNotificationHelper.scheduleNextReminder(appContext)
+        viewModelScope.launch {
+            trySilentDriveAuthorization()
+        }
+    }
+
+    private suspend fun trySilentDriveAuthorization(): String? {
+        if (prefsManager.hasValidDriveToken()) {
+            _driveConnected.value = true
+            return prefsManager.getDriveAccessToken()
+        }
+        return try {
+            val request = AuthorizationRequest.builder()
+                .setRequestedScopes(listOf(Scope(GoogleDriveService.DRIVE_FILE_SCOPE)))
+                .build()
+            val result = Identity.getAuthorizationClient(appContext).authorize(request).await()
+            if (!result.hasResolution() && !result.accessToken.isNullOrBlank()) {
+                val token = result.accessToken!!
+                prefsManager.saveDriveAccessToken(token, 3600L)
+                _driveConnected.value = true
+                token
+            } else {
+                null
+            }
+        } catch (e: Exception) {
+            Log.d(TAG, "Silent Drive auth not yet granted: ${e.message}")
+            null
+        }
     }
 
     fun clearBannerMessage() {
@@ -230,11 +261,13 @@ class MonevViewModel(
                 var driveFileName: String? = null
                 var createdFolderPath: String? = null
 
-                if (bitmap != null && prefsManager.hasValidDriveToken()) {
+                val activeToken = trySilentDriveAuthorization() ?: prefsManager.getDriveAccessToken()
+
+                if (bitmap != null && activeToken.isNotBlank()) {
                     val hierarchy = GoogleDriveService.buildDateFolderHierarchy(_driveFolderName.value, todayKey)
                     val fileName = "Absen_${hierarchy.dateFolder.replace(' ', '_')}_${System.currentTimeMillis() / 1000}.jpg"
                     val uploadRes = driveService.uploadPhotoToDrive(
-                        accessToken = prefsManager.getDriveAccessToken(),
+                        accessToken = activeToken,
                         bitmap = bitmap,
                         fileName = fileName,
                         description = "Dokumentasi Harian MagangHub ($todayKey): $cleanSummary",

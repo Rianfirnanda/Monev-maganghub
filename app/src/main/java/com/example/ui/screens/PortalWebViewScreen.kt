@@ -585,9 +585,9 @@ private fun AiWebViewColumnAssistantDialog(
     val context = LocalContext.current
     var userExplanation by rememberSaveable { mutableStateOf("") }
     var editedTitle by rememberSaveable { mutableStateOf("") }
-    var editedDescription by rememberSaveable { mutableStateOf("") }
-    var editedOutput by rememberSaveable { mutableStateOf("") }
-    var editedFullText by rememberSaveable { mutableStateOf("") }
+    var editedUraian by rememberSaveable { mutableStateOf("") }
+    var editedPembelajaran by rememberSaveable { mutableStateOf("") }
+    var editedKendala by rememberSaveable { mutableStateOf("") }
 
     val isLoading = columnHelperState is ColumnHelperState.Loading
 
@@ -602,7 +602,7 @@ private fun AiWebViewColumnAssistantDialog(
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "AI Pengisi & Perbaikan Kolom Absen",
+                    text = "AI Auto-Fill 3 Kolom Absen",
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -612,10 +612,10 @@ private fun AiWebViewColumnAssistantDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
                 Text(
-                    text = "Cukup ceritakan singkat kegiatan Anda hari ini ($todayDateKey), lalu biarkan AI menyusun kalimat laporan dan mengisi kolom absen di halaman WebView secara otomatis.",
+                    text = "Ceritakan singkat kegiatan Anda hari ini ($todayDateKey). AI akan otomatis menyusun & mengisi 3 kolom: Uraian Aktivitas, Pembelajaran yang Diperoleh, dan Kendala yang Dialami.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -638,7 +638,7 @@ private fun AiWebViewColumnAssistantDialog(
                         modifier = Modifier.size(18.dp)
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Ambil Teks dari Kolom Absen WebView Saat Ini")
+                    Text("Ambil Teks dari Kolom WebView Saat Ini")
                 }
 
                 OutlinedTextField(
@@ -646,7 +646,7 @@ private fun AiWebViewColumnAssistantDialog(
                     onValueChange = { userExplanation = it },
                     label = { Text("Penjelasan Singkat Kegiatan / Kalimat Draf") },
                     placeholder = {
-                        Text("Contoh: hari ini saya rekap data excel peserta magang, bantu bikin surat undangan rapat, dan ikut evaluasi...")
+                        Text("Contoh: hari ini saya mengikuti upacara hari sumpah pemuda, siangnya cek kesehatan dan sore hari memperbaiki bug di situs lintas benteng...")
                     },
                     minLines = 3,
                     maxLines = 5,
@@ -655,22 +655,22 @@ private fun AiWebViewColumnAssistantDialog(
                         .testTag("webview_ai_explanation_input")
                 )
 
-                Row(
+                Column(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Button(
                         onClick = {
                             onAutoGenerate(userExplanation) { draft ->
                                 editedTitle = draft.judulKegiatan
-                                editedDescription = draft.uraianKegiatan
-                                editedOutput = draft.outputCapaian
-                                editedFullText = draft.kalimatLengkapKolom
+                                editedUraian = draft.uraianAktivitas
+                                editedPembelajaran = draft.pembelajaranDiperoleh
+                                editedKendala = draft.kendalaDialami
                             }
                         },
                         enabled = !isLoading && userExplanation.isNotBlank(),
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .testTag("webview_ai_autogenerate_button")
                     ) {
                         Icon(
@@ -679,21 +679,21 @@ private fun AiWebViewColumnAssistantDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Auto-Generate")
+                        Text("AI Auto-Generate 3 Kolom Absen")
                     }
 
                     FilledTonalButton(
                         onClick = {
                             onPolishSentence(userExplanation) { draft ->
                                 editedTitle = draft.judulKegiatan
-                                editedDescription = draft.uraianKegiatan
-                                editedOutput = draft.outputCapaian
-                                editedFullText = draft.kalimatLengkapKolom
+                                editedUraian = draft.uraianAktivitas
+                                editedPembelajaran = draft.pembelajaranDiperoleh
+                                editedKendala = draft.kendalaDialami
                             }
                         },
                         enabled = !isLoading && userExplanation.isNotBlank(),
                         modifier = Modifier
-                            .weight(1f)
+                            .fillMaxWidth()
                             .testTag("webview_ai_polish_button")
                     ) {
                         Icon(
@@ -702,7 +702,7 @@ private fun AiWebViewColumnAssistantDialog(
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Perbaiki Kalimat")
+                        Text("Perbaiki Kalimat & Isi 3 Kolom")
                     }
                 }
 
@@ -717,7 +717,7 @@ private fun AiWebViewColumnAssistantDialog(
                         CircularProgressIndicator(modifier = Modifier.size(22.dp), strokeWidth = 2.5.dp)
                         Spacer(modifier = Modifier.width(10.dp))
                         Text(
-                            text = "AI sedang menyusun kalimat kolom absen...",
+                            text = "AI sedang menyusun 3 kolom absen...",
                             style = MaterialTheme.typography.bodyMedium
                         )
                     }
@@ -739,12 +739,12 @@ private fun AiWebViewColumnAssistantDialog(
                     }
                 }
 
-                if (editedFullText.isNotBlank() || columnHelperState is ColumnHelperState.Success) {
-                    if (editedFullText.isBlank() && columnHelperState is ColumnHelperState.Success) {
+                if (editedUraian.isNotBlank() || columnHelperState is ColumnHelperState.Success) {
+                    if (editedUraian.isBlank() && columnHelperState is ColumnHelperState.Success) {
                         editedTitle = columnHelperState.draft.judulKegiatan
-                        editedDescription = columnHelperState.draft.uraianKegiatan
-                        editedOutput = columnHelperState.draft.outputCapaian
-                        editedFullText = columnHelperState.draft.kalimatLengkapKolom
+                        editedUraian = columnHelperState.draft.uraianAktivitas
+                        editedPembelajaran = columnHelperState.draft.pembelajaranDiperoleh
+                        editedKendala = columnHelperState.draft.kendalaDialami
                     }
 
                     Card(
@@ -756,57 +756,70 @@ private fun AiWebViewColumnAssistantDialog(
                     ) {
                         Column(
                             modifier = Modifier.padding(12.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                            verticalArrangement = Arrangement.spacedBy(10.dp)
                         ) {
                             Text(
-                                text = "Hasil Susunan AI (Dapat Diedit Sebelum Diisi ke Kolom):",
+                                text = "Hasil 3 Kolom Monev MagangHub (Siap Diisi Otomatis):",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
                             )
 
                             OutlinedTextField(
-                                value = editedTitle,
-                                onValueChange = { editedTitle = it },
-                                label = { Text("Judul / Topik Kegiatan") },
-                                singleLine = true,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-
-                            OutlinedTextField(
-                                value = editedDescription,
-                                onValueChange = {
-                                    editedDescription = it
-                                    editedFullText = it
-                                },
-                                label = { Text("Uraian Kegiatan (Kalimat Diperbaiki)") },
+                                value = editedUraian,
+                                onValueChange = { editedUraian = it },
+                                label = { Text("1. Uraian Aktivitas") },
                                 minLines = 3,
                                 maxLines = 5,
-                                modifier = Modifier.fillMaxWidth()
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("edited_uraian_input")
                             )
 
                             OutlinedTextField(
-                                value = editedOutput,
-                                onValueChange = { editedOutput = it },
-                                label = { Text("Output / Capaian Kerja") },
+                                value = editedPembelajaran,
+                                onValueChange = { editedPembelajaran = it },
+                                label = { Text("2. Pembelajaran yang Diperoleh") },
                                 minLines = 2,
-                                maxLines = 3,
-                                modifier = Modifier.fillMaxWidth()
+                                maxLines = 4,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("edited_pembelajaran_input")
                             )
 
-                            OutlinedButton(
-                                onClick = {
-                                    copyToClipboard(context, editedFullText.ifBlank { editedDescription })
-                                },
-                                modifier = Modifier.fillMaxWidth()
+                            OutlinedTextField(
+                                value = editedKendala,
+                                onValueChange = { editedKendala = it },
+                                label = { Text("3. Kendala yang Dialami") },
+                                minLines = 2,
+                                maxLines = 4,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .testTag("edited_kendala_input")
+                            )
+
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
-                                Icon(
-                                    imageVector = Icons.Filled.ContentCopy,
-                                    contentDescription = null,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text("Salin ke Clipboard")
+                                OutlinedButton(
+                                    onClick = { copyToClipboard(context, editedUraian) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Salin Uraian", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
+                                OutlinedButton(
+                                    onClick = { copyToClipboard(context, editedPembelajaran) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Salin Belajar", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
+                                OutlinedButton(
+                                    onClick = { copyToClipboard(context, editedKendala) },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Salin Kendala", style = MaterialTheme.typography.labelSmall, maxLines = 1)
+                                }
                             }
                         }
                     }
@@ -814,21 +827,33 @@ private fun AiWebViewColumnAssistantDialog(
             }
         },
         confirmButton = {
-            if (editedFullText.isNotBlank() || editedDescription.isNotBlank()) {
+            if (editedUraian.isNotBlank()) {
                 Button(
                     onClick = {
+                        val combinedSummary = buildString {
+                            append("Uraian Aktivitas:\n$editedUraian")
+                            if (editedPembelajaran.isNotBlank()) {
+                                append("\n\nPembelajaran yang Diperoleh:\n$editedPembelajaran")
+                            }
+                            if (editedKendala.isNotBlank()) {
+                                append("\n\nKendala yang Dialami:\n$editedKendala")
+                            }
+                        }
                         onInjectIntoWebView(
                             StructuredAttendanceDraft(
-                                judulKegiatan = editedTitle,
-                                uraianKegiatan = editedDescription,
-                                outputCapaian = editedOutput,
-                                kalimatLengkapKolom = editedFullText.ifBlank { editedDescription }
+                                judulKegiatan = editedTitle.ifBlank { "Laporan Harian $todayDateKey" },
+                                uraianAktivitas = editedUraian,
+                                pembelajaranDiperoleh = editedPembelajaran,
+                                kendalaDialami = editedKendala,
+                                uraianKegiatan = editedUraian,
+                                outputCapaian = editedPembelajaran,
+                                kalimatLengkapKolom = combinedSummary
                             )
                         )
                     },
                     modifier = Modifier.testTag("inject_ai_to_webview_button")
                 ) {
-                    Text("Isi Otomatis ke Kolom Absen")
+                    Text("Isi Otomatis 3 Kolom ke Web")
                 }
             }
         },
@@ -852,10 +877,14 @@ private fun extractCurrentColumnTextFromWebView(
                     return active.value;
                 }
                 var textareas = document.querySelectorAll('textarea');
+                var collected = [];
                 for (var i = 0; i < textareas.length; i++) {
                     if (textareas[i].value && textareas[i].value.trim().length > 0) {
-                        return textareas[i].value;
+                        collected.push(textareas[i].value.trim());
                     }
+                }
+                if (collected.length > 0) {
+                    return collected.join(". ");
                 }
                 var editables = document.querySelectorAll('[contenteditable="true"], .ql-editor, .ck-editor__editable');
                 for (var j = 0; j < editables.length; j++) {
@@ -885,15 +914,16 @@ private fun injectAttendanceFieldsIntoWebView(
     webView: WebView,
     draft: StructuredAttendanceDraft
 ) {
-    val safeJudul = JSONObject.quote(draft.judulKegiatan)
-    val safeUraian = JSONObject.quote(draft.uraianKegiatan.ifBlank { draft.kalimatLengkapKolom })
-    val safeOutput = JSONObject.quote(draft.outputCapaian)
+    val safeUraian = JSONObject.quote(draft.uraianAktivitas.ifBlank { draft.uraianKegiatan })
+    val safePembelajaran = JSONObject.quote(draft.pembelajaranDiperoleh.ifBlank { draft.outputCapaian })
+    val safeKendala = JSONObject.quote(draft.kendalaDialami)
     val safeFull = JSONObject.quote(draft.kalimatLengkapKolom)
 
     val js = """
         (function() {
             try {
                 function setNativeValue(el, val) {
+                    if (!el || !val) return;
                     var proto = el.tagName === 'TEXTAREA'
                         ? window.HTMLTextAreaElement.prototype
                         : window.HTMLInputElement.prototype;
@@ -905,46 +935,119 @@ private fun injectAttendanceFieldsIntoWebView(
                     }
                     el.dispatchEvent(new Event('input', { bubbles: true }));
                     el.dispatchEvent(new Event('change', { bubbles: true }));
+                    el.dispatchEvent(new Event('blur', { bubbles: true }));
                 }
 
-                var filledAny = false;
-                var active = document.activeElement;
-                if (active && (active.tagName === 'TEXTAREA' || (active.tagName === 'INPUT' && active.type === 'text'))) {
-                    setNativeValue(active, $safeFull);
-                    filledAny = true;
-                }
-
-                var textareas = document.querySelectorAll('textarea');
-                if (textareas.length === 1) {
-                    setNativeValue(textareas[0], $safeFull);
-                    filledAny = true;
-                } else if (textareas.length > 1) {
-                    setNativeValue(textareas[0], $safeUraian);
-                    if ($safeOutput.length > 0) {
-                        setNativeValue(textareas[1], $safeOutput);
+                function getFieldContext(el) {
+                    var parts = [
+                        el.name || '',
+                        el.id || '',
+                        el.placeholder || '',
+                        el.getAttribute('aria-label') || ''
+                    ];
+                    if (el.id) {
+                        var explicitLabel = document.querySelector('label[for="' + el.id + '"]');
+                        if (explicitLabel) parts.push(explicitLabel.innerText || '');
                     }
-                    filledAny = true;
+                    var prev = el.previousElementSibling;
+                    if (prev) parts.push(prev.innerText || '');
+                    var parent = el.parentElement;
+                    if (parent) {
+                        var parentLabel = parent.querySelector('label, span, p, h1, h2, h3, h4, h5, h6');
+                        if (parentLabel) parts.push(parentLabel.innerText || '');
+                        if (parent.previousElementSibling) {
+                            parts.push(parent.previousElementSibling.innerText || '');
+                        }
+                        var grandParent = parent.parentElement;
+                        if (grandParent) {
+                            var gpLabel = grandParent.querySelector('label, span, p, h1, h2, h3, h4, h5, h6');
+                            if (gpLabel) parts.push(gpLabel.innerText || '');
+                        }
+                    }
+                    return parts.join(' ').toLowerCase();
                 }
 
-                var inputs = document.querySelectorAll('input[type="text"]');
-                for (var i = 0; i < inputs.length; i++) {
-                    var nameAttr = ((inputs[i].name || '') + ' ' + (inputs[i].id || '') + ' ' + (inputs[i].placeholder || '')).toLowerCase();
-                    if (nameAttr.indexOf('judul') !== -1 || nameAttr.indexOf('topik') !== -1 || nameAttr.indexOf('kegiatan') !== -1 || nameAttr.indexOf('aktivitas') !== -1) {
-                        setNativeValue(inputs[i], $safeJudul);
-                        filledAny = true;
-                    } else if (nameAttr.indexOf('output') !== -1 || nameAttr.indexOf('hasil') !== -1 || nameAttr.indexOf('capaian') !== -1) {
-                        setNativeValue(inputs[i], $safeOutput);
-                        filledAny = true;
+                var matchedUraian = false;
+                var matchedPembelajaran = false;
+                var matchedKendala = false;
+
+                var allTextareas = Array.prototype.slice.call(document.querySelectorAll('textarea'));
+                var visibleTextareas = allTextareas.filter(function(t) {
+                    return !t.disabled && !t.readOnly && t.offsetParent !== null;
+                });
+                if (visibleTextareas.length === 0) {
+                    visibleTextareas = allTextareas;
+                }
+
+                // 1. Semantic label/attribute matching on textareas
+                for (var i = 0; i < visibleTextareas.length; i++) {
+                    var ta = visibleTextareas[i];
+                    var ctx = getFieldContext(ta);
+                    if (!matchedUraian && (ctx.indexOf('uraian') !== -1 || ctx.indexOf('aktivitas') !== -1 || ctx.indexOf('kegiatan') !== -1)) {
+                        setNativeValue(ta, $safeUraian);
+                        matchedUraian = true;
+                    } else if (!matchedPembelajaran && (ctx.indexOf('pembelajaran') !== -1 || ctx.indexOf('diperoleh') !== -1 || ctx.indexOf('pelajaran') !== -1 || ctx.indexOf('ilmu') !== -1)) {
+                        setNativeValue(ta, $safePembelajaran);
+                        matchedPembelajaran = true;
+                    } else if (!matchedKendala && (ctx.indexOf('kendala') !== -1 || ctx.indexOf('dialami') !== -1 || ctx.indexOf('hambatan') !== -1 || ctx.indexOf('masalah') !== -1)) {
+                        setNativeValue(ta, $safeKendala);
+                        matchedKendala = true;
                     }
                 }
 
+                // 2. Positional fallback for the 3 standard Monev MagangHub textareas
+                if (visibleTextareas.length >= 3) {
+                    if (!matchedUraian) {
+                        setNativeValue(visibleTextareas[0], $safeUraian);
+                        matchedUraian = true;
+                    }
+                    if (!matchedPembelajaran) {
+                        setNativeValue(visibleTextareas[1], $safePembelajaran);
+                        matchedPembelajaran = true;
+                    }
+                    if (!matchedKendala) {
+                        setNativeValue(visibleTextareas[2], $safeKendala);
+                        matchedKendala = true;
+                    }
+                } else if (visibleTextareas.length === 2) {
+                    if (!matchedUraian) setNativeValue(visibleTextareas[0], $safeUraian);
+                    if (!matchedPembelajaran) setNativeValue(visibleTextareas[1], $safePembelajaran);
+                } else if (visibleTextareas.length === 1) {
+                    if (!matchedUraian) setNativeValue(visibleTextareas[0], $safeUraian);
+                }
+
+                // 3. Also check text inputs if any of the 3 fields are rendered as <input type="text">
+                var textInputs = document.querySelectorAll('input[type="text"], input:not([type])');
+                for (var k = 0; k < textInputs.length; k++) {
+                    var inp = textInputs[k];
+                    var ictx = getFieldContext(inp);
+                    if (!matchedUraian && (ictx.indexOf('uraian') !== -1 || ictx.indexOf('aktivitas') !== -1)) {
+                        setNativeValue(inp, $safeUraian);
+                        matchedUraian = true;
+                    } else if (!matchedPembelajaran && (ictx.indexOf('pembelajaran') !== -1 || ictx.indexOf('diperoleh') !== -1)) {
+                        setNativeValue(inp, $safePembelajaran);
+                        matchedPembelajaran = true;
+                    } else if (!matchedKendala && (ictx.indexOf('kendala') !== -1 || ictx.indexOf('dialami') !== -1 || ictx.indexOf('hambatan') !== -1)) {
+                        setNativeValue(inp, $safeKendala);
+                        matchedKendala = true;
+                    }
+                }
+
+                // 4. Also support contenteditable editors if present
                 var editables = document.querySelectorAll('[contenteditable="true"], .ql-editor, .ck-editor__editable');
-                for (var j = 0; j < editables.length; j++) {
-                    editables[j].innerText = $safeFull;
-                    editables[j].dispatchEvent(new Event('input', { bubbles: true }));
-                    filledAny = true;
+                if (editables.length >= 3) {
+                    editables[0].innerText = $safeUraian;
+                    editables[0].dispatchEvent(new Event('input', { bubbles: true }));
+                    editables[1].innerText = $safePembelajaran;
+                    editables[1].dispatchEvent(new Event('input', { bubbles: true }));
+                    editables[2].innerText = $safeKendala;
+                    editables[2].dispatchEvent(new Event('input', { bubbles: true }));
+                } else if (editables.length === 1 && visibleTextareas.length === 0) {
+                    editables[0].innerText = $safeFull;
+                    editables[0].dispatchEvent(new Event('input', { bubbles: true }));
                 }
-                return filledAny;
+
+                return true;
             } catch (e) {
                 return false;
             }
